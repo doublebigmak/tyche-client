@@ -12,11 +12,20 @@ import requests
 
 __all__ = ["TycheClient", "TycheApiError"]
 
+MAX_BATCH_TICKERS = 50
+MAX_UNIVERSE_ROWS = 5000
+
+
+def _ticker_batches(tickers: Sequence[str]):
+    clean = list(dict.fromkeys(ticker.strip().upper() for ticker in tickers if ticker.strip()))
+    for start in range(0, len(clean), MAX_BATCH_TICKERS):
+        yield clean[start : start + MAX_BATCH_TICKERS]
+
 
 class TycheApiError(RuntimeError):
     """Raised when the Data API returns a non-2xx response."""
 
-    def __init__(self, status_code: int, detail: str):
+    def __init__(self, status_code: int, detail: object):
         self.status_code = status_code
         self.detail = detail
         super().__init__(f"[{status_code}] {detail}")
@@ -108,11 +117,18 @@ class TycheClient:
                 "exchange": exchange,
                 "country": country,
                 "market_cap_min": market_cap_min,
-                "limit": 5000 if industry else limit,
+                # ponytail: /universe has no pagination; move industry filtering
+                # server-side when classified coverage can exceed this endpoint cap.
+                "limit": MAX_UNIVERSE_ROWS if industry else limit,
             },
         )
         df = pd.DataFrame(data.get("rows", []))
         if industry and not df.empty:
+            if len(df) >= MAX_UNIVERSE_ROWS:
+                warnings.warn(
+                    "Industry filtering reached the API's 5,000-row cap; results may be incomplete",
+                    stacklevel=2,
+                )
             has_industry = df["industry"].notna() & (df["industry"].astype(str).str.strip() != "")
             missing = int((~has_industry).sum())
             if missing:
@@ -154,12 +170,14 @@ class TycheClient:
     def series(
         self,
         source: str,
-        id: str,
+        series_id: str,
         start: Optional[str] = None,
         end: Optional[str] = None,
     ) -> pd.Series:
         """A single-value series from any source (ticker, vix, pcr, fred, eia, wbnk, datahub, statcan)."""
-        data = self._get("/series", {"source": source, "id": id, "start": start, "end": end})
+        data = self._get(
+            "/series", {"source": source, "id": series_id, "start": start, "end": end}
+        )
         points = data["points"]
         if not points:
             return pd.Series(dtype="float64", name=data["id"])
@@ -175,12 +193,11 @@ class TycheClient:
     ) -> pd.DataFrame:
         """Aligned close-price matrix (one column per ticker)."""
         cols = {}
-        clean = list(dict.fromkeys(t.strip().upper() for t in tickers if t.strip()))
-        for i in range(0, len(clean), 50):
+        for chunk in _ticker_batches(tickers):
             data = self._post(
                 "/prices/closes/batch",
                 params={"start": start, "end": end},
-                json=clean[i : i + 50],
+                json=chunk,
             )
             for ticker, payload in data.items():
                 bars = payload.get("bars", [])
@@ -209,10 +226,8 @@ class TycheClient:
         per-call ticker cap, so a whole index can be passed at once.
         """
         rename = {"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}
-        clean = list(dict.fromkeys(t.strip().upper() for t in tickers if t.strip()))
         frames = []
-        for i in range(0, len(clean), 50):
-            chunk = clean[i : i + 50]
+        for chunk in _ticker_batches(tickers):
             data = self._post(
                 "/prices/ohlcv/batch",
                 params={"start": start, "end": end, "interval": interval},

@@ -100,7 +100,7 @@ More analysis examples:
 | `prices(ticker, start, end, interval)` | OHLCV DataFrame | `GET /data/v1/prices/{ticker}` |
 | `ohlcv(tickers, start, end, interval, fields)` | long/tidy DataFrame | `POST /data/v1/prices/ohlcv/batch` |
 | `index_prices(slug, sector, industry, country, start, end, interval, fields)` | long/tidy DataFrame | (composes `universe`/`constituents` + `ohlcv`) |
-| `series(source, id, start, end)` | Series | `GET /data/v1/series` |
+| `series(source, series_id, start, end)` | Series | `GET /data/v1/series` |
 | `price_matrix(tickers, start, end)` | DataFrame | `POST /data/v1/prices/closes/batch` |
 | `returns(tickers, start, end)` | DataFrame | (local `pct_change`) |
 | `correlation_matrix(tickers, start, end)` | DataFrame | (local `corr`) |

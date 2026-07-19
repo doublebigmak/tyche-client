@@ -1,6 +1,6 @@
 [project]
 name = "tyche-client"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python client for the Tyche Data API (/data/v1) — pull prices, series, returns, and correlations into pandas."
 requires-python = ">=3.9"
 dependencies = [
