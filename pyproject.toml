@@ -1,0 +1,19 @@
+[project]
+name = "tyche-client"
+version = "0.2.0"
+description = "Python client for the Tyche Data API (/data/v1) — pull prices, series, returns, and correlations into pandas."
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.28",
+    "pandas>=1.5",
+]
+
+[project.optional-dependencies]
+notebook = ["jupyter", "matplotlib"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["tyche_client"]
