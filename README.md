@@ -26,16 +26,33 @@ Keys are long-lived, read-only, and revocable. Treat the `tyk_...` value like a 
 
 ```bash
 pip install -e .            # from this folder
-# or, with notebook extras:
+# or, with notebook extras (needed for the notebooks below):
 pip install -e ".[notebook]"
 ```
 
-## 3. Use
+## 3. Configure
+
+Copy `.env.example` to `.env` and fill in your key:
+
+```bash
+cp .env.example .env
+# then edit .env:
+#   TYCHE_BASE_URL = http://localhost:8000
+#   TYCHE_API_KEY  = tyk_your_key_here
+```
+
+`.env` is gitignored — every notebook in this repo loads it via `python-dotenv` rather
+than hardcoding a key inline, so nothing secret ends up committed.
+
+## 4. Use
 
 ```python
+import os
+from dotenv import load_dotenv
 from tyche_client import TycheClient
 
-client = TycheClient("http://localhost:8000", "tyk_your_key_here")
+load_dotenv()
+client = TycheClient(os.getenv("TYCHE_BASE_URL"), os.getenv("TYCHE_API_KEY"))
 
 # Single ticker OHLCV
 aapl = client.prices("AAPL", start="2024-01-01")
@@ -85,8 +102,38 @@ More analysis examples:
   volatility, drawdowns, correlations, and risk contributions.
 - [`macro_regime_analysis.ipynb`](macro_regime_analysis.ipynb) — FRED regimes and
   server-side rolling cross-asset relationships.
+- [`oil_energy_market_returns.ipynb`](oil_energy_market_returns.ipynb) — weekly,
+  monthly, quarterly, and annual oil/energy changes versus current and future sector returns.
+- [`sp500_market_breadth.ipynb`](sp500_market_breadth.ipynb) — point-in-time-aware S&P 500
+  breadth, one-month/one-year participation, moving-average breadth, divergences, and highs/lows.
 - [`global_equity_screen.ipynb`](global_equity_screen.ipynb) — country-aware
   universe discovery, momentum, volatility, and drawdown screening.
+- [`vix_regime_softmax_blend.ipynb`](vix_regime_softmax_blend.ipynb) — tests alternative
+  and blended VIX regime signals against the backend's recency-weighted z-score (a
+  softmax-weighted score, a 0-100 percentile composite index, a True Strength Index
+  momentum signal at various frequencies/windows/targets — including downside deviation,
+  max adverse excursion, and momentum-direction overlays gated on raw vs softmaxed TSI —
+  and searched 2-way/3-way blends), validated against forward realized-vol/drawdown
+  upside/downside with time-series and scatter visualizations against SPY. Ends with a
+  final recommended production design (Part 13): a `vix_index` (0-100, the Part 5
+  slow-TSI blend — the one construction that meaningfully beats the base signal) plus a
+  nullable `direction` field gated on short-term TSI, with ready-to-port
+  `compute_vix_index_series` / `compute_vix_direction_series` functions and a suggested
+  `VixRegimeResponse` schema extension for `app/services/vix_regime.py`.
+- [`spy_hmm_regimes.ipynb`](spy_hmm_regimes.ipynb) — a 3-state hidden Markov regime model on
+  SPY (Bull / Choppy / Bear) following Yuan & Mitra, SSRN 3406068, via
+  `statsmodels.MarkovRegression`. Selects the state count on persistence rather than BIC alone,
+  labels states from fitted parameters, and characterises them with time series, a
+  volatility-vs-return regime map, per-episode scatterplots, and multi-horizon reversal
+  correlations that establish *why the middle state is "choppy" rather than "mean-reverting"*.
+  Tests the VOL Regime Index as a driver of time-varying transition probabilities (it earns its
+  place: ΔBIC ≈ −100), replicates across QQQ / DIA / IWM, and runs a walk-forward,
+  causally-filtered out-of-sample evaluation of position sizing, volatility targeting and
+  hysteresis rules. Closes on the signal-processing question — debouncing the flickering state
+  path is the largest single improvement, and a Kalman filter is shown to be *algebraically the
+  same estimator* as the EMA unless a slope state is added. Every hyperparameter is stress-tested
+  against a walk-forward selector to price the hindsight in it. Deterministic — `RANDOM_SEED` pins
+  the EM restarts.
 
 ## API surface
 

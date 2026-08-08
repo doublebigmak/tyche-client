@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-notebook = ["jupyter", "matplotlib"]
+notebook = ["jupyter", "matplotlib", "python-dotenv", "scipy", "statsmodels"]
 
 [build-system]
 requires = ["setuptools>=61"]
