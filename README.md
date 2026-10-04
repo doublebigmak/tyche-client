@@ -1,6 +1,6 @@
 # tyche-client
 
-Python client + Jupyter notebook for pulling time-series data from a Tyche backend
+Python client + Jupyter examples for pulling time-series data from a Tyche backend
 into pandas — prices, returns, correlations, indices, VIX/PCR, and macro series
 (FRED / EIA / World Bank / DataHub / StatCan).
 
@@ -48,6 +48,7 @@ than hardcoding a key inline, so nothing secret ends up committed.
 
 ```python
 import os
+import pandas as pd
 from dotenv import load_dotenv
 from tyche_client import TycheClient
 
@@ -93,25 +94,118 @@ client.index_prices("sp500", sector="Energy", start="2024-01-01")
 client.rolling_correlation("ticker", "AAPL", "ticker", "MSFT")
 ```
 
-See [`examples/example.ipynb`](examples/example.ipynb) for a quickstart. More involved
-research notebooks live in the
-[`scrying-quant`](https://github.com/doublebigmak/scrying-quant) project, where they can
-run through its `qsibyl` notebook platform while continuing to use this client API.
+## Notebook examples
 
-More analysis examples:
+This repository now keeps the client-focused examples under [`examples/`](examples/).
+They demonstrate API access and analyses that are useful when learning or validating the
+client:
 
-- [`examples/portfolio_risk_analysis.ipynb`](examples/portfolio_risk_analysis.ipynb) — performance,
-  volatility, drawdowns, correlations, and risk contributions.
-- [`examples/macro_regime_analysis.ipynb`](examples/macro_regime_analysis.ipynb) — FRED regimes and
-  server-side rolling cross-asset relationships.
-- [`examples/oil_energy_market_returns.ipynb`](examples/oil_energy_market_returns.ipynb) — weekly,
-  monthly, quarterly, and annual oil/energy changes versus current and future sector returns.
-- [`examples/sp500_market_breadth.ipynb`](examples/sp500_market_breadth.ipynb) — point-in-time-aware S&P 500
-  breadth, one-month/one-year participation, moving-average breadth, divergences, and highs/lows.
-- [`examples/global_equity_screen.ipynb`](examples/global_equity_screen.ipynb) — country-aware
-  universe discovery, momentum, volatility, and drawdown screening.
-- [`examples/accumulation_validation.ipynb`](examples/accumulation_validation.ipynb) —
-  validation of accumulation-style signals against subsequent returns.
+| Notebook | What it demonstrates |
+|----------|----------------------|
+| [`example.ipynb`](examples/example.ipynb) | Minimal setup, authentication, prices, macro series, returns, and correlations. |
+| [`global_equity_screen.ipynb`](examples/global_equity_screen.ipynb) | Country-aware universe discovery and cross-sectional momentum, volatility, and drawdown screening. |
+| [`macro_regime_analysis.ipynb`](examples/macro_regime_analysis.ipynb) | FRED macro regimes and rolling relationships across equities, bonds, commodities, and volatility. |
+| [`oil_energy_market_returns.ipynb`](examples/oil_energy_market_returns.ipynb) | Weekly through annual oil and energy-sector changes compared with current and subsequent returns. |
+| [`portfolio_risk_analysis.ipynb`](examples/portfolio_risk_analysis.ipynb) | Portfolio performance, volatility, drawdowns, correlations, and component risk contributions. |
+| [`accumulation_validation.ipynb`](examples/accumulation_validation.ipynb) | Validation of accumulation-style signals against subsequent market returns. |
+| [`sp500_market_breadth.ipynb`](examples/sp500_market_breadth.ipynb) | Point-in-time S&P 500 breadth, participation, moving-average breadth, divergences, and new highs/lows. |
+
+Longer research notebooks have moved to
+[`scrying-quant/notebooks`](https://github.com/doublebigmak/scrying-quant/tree/main/notebooks).
+That project installs `tyche-client` as a pinned Git dependency and runs the notebooks
+through its `qsibyl` research platform. The migrated work includes data discovery,
+SPY/VIX exploratory analysis, hidden-Markov market regimes, and VIX regime-signal blending.
+
+## What you can build with the client
+
+The API methods return pandas objects, so they can feed notebooks, scheduled research
+jobs, screening tools, dashboards, or a separate backtesting system. Some practical
+starting points follow.
+
+### Point-in-time index research
+
+Avoid survivorship bias by asking who belonged to an index on each historical date, or
+retrieve complete membership intervals for your own point-in-time joins:
+
+```python
+members_then = client.constituents("sp500", as_of="2010-01-04")
+membership_history = client.constituents("russell1000", include_history=True)
+
+# Pull the prices of a historically resolved group after selecting its tickers.
+tickers = members_then["ticker"].tolist()
+historical_prices = client.ohlcv(tickers, start="2010-01-04", end="2010-12-31")
+```
+
+Potential uses include breadth indicators, constituent-entry studies, sector leadership,
+index turnover, and point-in-time backtest universes.
+
+### Cross-sectional screens
+
+Build a classified universe first, then calculate signals locally from bulk prices:
+
+```python
+universe = client.universe(
+    index="sp500",
+    sector="Technology",
+    market_cap_min=10_000_000_000,
+)
+prices = client.price_matrix(universe["ticker"].tolist(), start="2024-01-01")
+
+screen = prices.pct_change(63).iloc[-1].rename("momentum_3m").sort_values(ascending=False)
+leaders = screen.head(20)
+```
+
+The same pattern supports momentum and reversal screens, volatility ranking, drawdown
+monitoring, regional comparisons, sector rotation, and industry peer analysis.
+
+### Macro and market overlays
+
+Align economic, energy, volatility, and market data on a shared pandas index:
+
+```python
+unemployment = client.series("fred", "UNRATE", start="2000-01-01")
+oil = client.search("crude oil", source="eia")       # discover the desired series ID
+vix = client.series("vix", "VIX", start="2000-01-01")
+spy = client.prices("SPY", start="2000-01-01")["Close"]
+
+macro_panel = pd.concat(
+    {"unemployment": unemployment, "vix": vix, "spy": spy}, axis=1
+)
+```
+
+This is useful for regime classification, event studies, recession dashboards,
+inflation-sensitive asset comparisons, volatility conditioning, and macro signal research.
+
+### Portfolio and risk monitoring
+
+Use the convenience methods for a compact research pipeline:
+
+```python
+assets = ["SPY", "QQQ", "TLT", "GLD"]
+returns = client.returns(assets, start="2020-01-01")
+correlations = returns.corr()
+rolling_spy_tlt = client.rolling_correlation(
+    "ticker", "SPY", "ticker", "TLT", start_date="2020-01-01"
+)
+
+annualized_volatility = returns.std() * (252 ** 0.5)
+```
+
+From there you can add allocation weights, risk contributions, rolling drawdowns,
+diversification alerts, stress windows, or report generation.
+
+### Other useful workflows
+
+- Explore unfamiliar datasets with `sources()`, `search()`, and `indices()` before writing
+  data-specific code.
+- Download tidy OHLCV batches for database ingestion, feature engineering, or model training.
+- Compare current constituents across sectors, industries, exchanges, countries, and market-cap
+  thresholds.
+- Study lead/lag relationships with server-side rolling correlation and locally calculated
+  forward returns.
+- Combine VIX and put/call series with asset returns for sentiment, hedging, or tail-risk research.
+- Use `index_prices()` to go directly from a classified index slice to an analysis-ready price
+  panel without manually coordinating constituent and batch-price calls.
 
 ## API surface
 
