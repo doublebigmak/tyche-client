@@ -75,6 +75,8 @@ client.search("oil", source="eia")     # search within one source
 client.indices()
 client.constituents("sp500")
 client.constituents("sp500", sector="Energy")
+client.constituents("sp500", as_of="2010-01-04")  # point-in-time membership
+client.constituents("russell1000", include_history=True)  # every membership period
 
 # Filter a classified universe (carries industry + country), then pull prices
 client.universe(index="sp500", sector="Technology")
@@ -142,7 +144,7 @@ More analysis examples:
 | `sources()` | DataFrame | `GET /data/v1/catalog/sources` |
 | `search(q, source, limit)` | DataFrame | `GET /data/v1/catalog/search` |
 | `indices()` | DataFrame | `GET /data/v1/indices` |
-| `constituents(slug, sector, exchange)` | DataFrame | `GET /data/v1/indices/{slug}/constituents` |
+| `constituents(slug, sector, exchange, as_of, include_history)` | DataFrame | `GET /data/v1/indices/{slug}/constituents` |
 | `universe(index, sector, industry, country, exchange, market_cap_min, limit)` | DataFrame | `GET /data/v1/universe` |
 | `prices(ticker, start, end, interval)` | OHLCV DataFrame | `GET /data/v1/prices/{ticker}` |
 | `ohlcv(tickers, start, end, interval, fields)` | long/tidy DataFrame | `POST /data/v1/prices/ohlcv/batch` |

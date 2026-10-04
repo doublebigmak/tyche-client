@@ -88,9 +88,23 @@ class TycheClient:
         slug: str,
         sector: Optional[str] = None,
         exchange: Optional[str] = None,
+        as_of: Optional[str] = None,
+        include_history: bool = False,
     ) -> pd.DataFrame:
-        """Current constituents of an official index, optionally filtered by sector/exchange."""
-        params = {"sector": sector, "exchange": exchange}
+        """Current, point-in-time, or all historical index constituents.
+
+        Use ``as_of="YYYY-MM-DD"`` for a point-in-time S&P 500 or Russell 1000
+        membership snapshot. Use ``include_history=True`` to return all recorded
+        membership periods (including ``start_date`` and ``end_date``).
+        """
+        if as_of and include_history:
+            raise ValueError("as_of and include_history cannot be combined")
+        params = {
+            "sector": sector,
+            "exchange": exchange,
+            "as_of": as_of,
+            "include_history": include_history or None,
+        }
         return pd.DataFrame(self._get(f"/indices/{slug}/constituents", params))
 
     def universe(
@@ -220,12 +234,13 @@ class TycheClient:
     ) -> pd.DataFrame:
         """Full OHLCV for many tickers as a long/tidy frame.
 
-        Columns: ``ticker``, ``date``, ``Open``, ``High``, ``Low``, ``Close``, ``Volume``
+        Columns: ``ticker``, ``date``, ``Open``, ``High``, ``Low``, ``Close``,
+        ``Adjusted Close``, ``Volume``
         (one row per ticker per day). ``fields`` optionally subsets the price columns,
         e.g. ``fields=["Close", "Volume"]``. Requests are chunked under the API's
         per-call ticker cap, so a whole index can be passed at once.
         """
-        rename = {"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"}
+        rename = {"open": "Open", "high": "High", "low": "Low", "close": "Close", "adjusted_close": "Adjusted Close", "volume": "Volume"}
         frames = []
         for chunk in _ticker_batches(tickers):
             data = self._post(
@@ -244,7 +259,7 @@ class TycheClient:
             return pd.DataFrame()
         out = pd.concat(frames, ignore_index=True)
         out["date"] = pd.to_datetime(out["date"])
-        cols = ["ticker", "date"] + (list(fields) if fields else ["Open", "High", "Low", "Close", "Volume"])
+        cols = ["ticker", "date"] + (list(fields) if fields else ["Open", "High", "Low", "Close", "Adjusted Close", "Volume"])
         out = out[[c for c in cols if c in out.columns]]
         return out.sort_values(["ticker", "date"]).reset_index(drop=True)
 

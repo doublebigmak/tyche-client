@@ -49,6 +49,22 @@ class TycheClientTest(unittest.TestCase):
             with self.assertWarnsRegex(UserWarning, "results may be incomplete"):
                 self.client.universe(industry="Software")
 
+    def test_constituents_supports_point_in_time_and_history(self):
+        with patch.object(self.client, "_get", return_value=[]) as get:
+            self.client.constituents("sp500", as_of="2010-01-04")
+            self.client.constituents("russell1000", include_history=True)
+
+        self.assertEqual(
+            get.call_args_list[0].args,
+            ("/indices/sp500/constituents", {"sector": None, "exchange": None, "as_of": "2010-01-04", "include_history": None}),
+        )
+        self.assertEqual(
+            get.call_args_list[1].args,
+            ("/indices/russell1000/constituents", {"sector": None, "exchange": None, "as_of": None, "include_history": True}),
+        )
+        with self.assertRaises(ValueError):
+            self.client.constituents("sp500", as_of="2010-01-04", include_history=True)
+
     def test_transport_uses_data_api_contract_and_preserves_validation_detail(self):
         response = Mock(ok=False, status_code=422, text="validation failed")
         response.json.return_value = {"detail": [{"msg": "invalid interval"}]}
@@ -82,6 +98,7 @@ class TycheClientTest(unittest.TestCase):
                             "high": 2,
                             "low": 0.5,
                             "close": 1.5,
+                            "adjusted_close": 1.25,
                             "volume": 100,
                         }
                     ]
@@ -97,6 +114,13 @@ class TycheClientTest(unittest.TestCase):
         self.assertEqual([len(chunk) for chunk in calls], [50, 1])
         self.assertEqual(result.columns.tolist(), ["ticker", "date", "Close"])
         self.assertTrue(pd.api.types.is_datetime64_any_dtype(result["date"]))
+
+    def test_ohlcv_includes_adjusted_close_by_default(self):
+        with patch.object(self.client, "_post", return_value={"AAPL": {"bars": [{"date": "2026-01-02", "open": 1, "high": 2, "low": 0.5, "close": 1.5, "adjusted_close": 1.25, "volume": 100}]}}):
+            result = self.client.ohlcv(["AAPL"])
+
+        self.assertEqual(result.columns.tolist(), ["ticker", "date", "Open", "High", "Low", "Close", "Adjusted Close", "Volume"])
+        self.assertEqual(result.iloc[0]["Adjusted Close"], 1.25)
 
     def test_index_prices_uses_the_classified_universe_for_industry(self):
         members = pd.DataFrame({"ticker": ["A", "B"]})
