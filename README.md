@@ -93,49 +93,25 @@ client.index_prices("sp500", sector="Energy", start="2024-01-01")
 client.rolling_correlation("ticker", "AAPL", "ticker", "MSFT")
 ```
 
-See [`example.ipynb`](example.ipynb) for a quickstart, and
-[`data_discovery_and_analysis.ipynb`](data_discovery_and_analysis.ipynb) for a fuller
-walkthrough of discovery / `universe` / bulk `ohlcv` / `index_prices` with a worked
-sector analysis.
+See [`examples/example.ipynb`](examples/example.ipynb) for a quickstart. More involved
+research notebooks live in the
+[`scrying-quant`](https://github.com/doublebigmak/scrying-quant) project, where they can
+run through its `qsibyl` notebook platform while continuing to use this client API.
 
 More analysis examples:
 
-- [`portfolio_risk_analysis.ipynb`](portfolio_risk_analysis.ipynb) — performance,
+- [`examples/portfolio_risk_analysis.ipynb`](examples/portfolio_risk_analysis.ipynb) — performance,
   volatility, drawdowns, correlations, and risk contributions.
-- [`macro_regime_analysis.ipynb`](macro_regime_analysis.ipynb) — FRED regimes and
+- [`examples/macro_regime_analysis.ipynb`](examples/macro_regime_analysis.ipynb) — FRED regimes and
   server-side rolling cross-asset relationships.
-- [`oil_energy_market_returns.ipynb`](oil_energy_market_returns.ipynb) — weekly,
+- [`examples/oil_energy_market_returns.ipynb`](examples/oil_energy_market_returns.ipynb) — weekly,
   monthly, quarterly, and annual oil/energy changes versus current and future sector returns.
-- [`sp500_market_breadth.ipynb`](sp500_market_breadth.ipynb) — point-in-time-aware S&P 500
+- [`examples/sp500_market_breadth.ipynb`](examples/sp500_market_breadth.ipynb) — point-in-time-aware S&P 500
   breadth, one-month/one-year participation, moving-average breadth, divergences, and highs/lows.
-- [`global_equity_screen.ipynb`](global_equity_screen.ipynb) — country-aware
+- [`examples/global_equity_screen.ipynb`](examples/global_equity_screen.ipynb) — country-aware
   universe discovery, momentum, volatility, and drawdown screening.
-- [`vix_regime_softmax_blend.ipynb`](vix_regime_softmax_blend.ipynb) — tests alternative
-  and blended VIX regime signals against the backend's recency-weighted z-score (a
-  softmax-weighted score, a 0-100 percentile composite index, a True Strength Index
-  momentum signal at various frequencies/windows/targets — including downside deviation,
-  max adverse excursion, and momentum-direction overlays gated on raw vs softmaxed TSI —
-  and searched 2-way/3-way blends), validated against forward realized-vol/drawdown
-  upside/downside with time-series and scatter visualizations against SPY. Ends with a
-  final recommended production design (Part 13): a `vix_index` (0-100, the Part 5
-  slow-TSI blend — the one construction that meaningfully beats the base signal) plus a
-  nullable `direction` field gated on short-term TSI, with ready-to-port
-  `compute_vix_index_series` / `compute_vix_direction_series` functions and a suggested
-  `VixRegimeResponse` schema extension for `app/services/vix_regime.py`.
-- [`spy_hmm_regimes.ipynb`](spy_hmm_regimes.ipynb) — a 3-state hidden Markov regime model on
-  SPY (Bull / Choppy / Bear) following Yuan & Mitra, SSRN 3406068, via
-  `statsmodels.MarkovRegression`. Selects the state count on persistence rather than BIC alone,
-  labels states from fitted parameters, and characterises them with time series, a
-  volatility-vs-return regime map, per-episode scatterplots, and multi-horizon reversal
-  correlations that establish *why the middle state is "choppy" rather than "mean-reverting"*.
-  Tests the VOL Regime Index as a driver of time-varying transition probabilities (it earns its
-  place: ΔBIC ≈ −100), replicates across QQQ / DIA / IWM, and runs a walk-forward,
-  causally-filtered out-of-sample evaluation of position sizing, volatility targeting and
-  hysteresis rules. Closes on the signal-processing question — debouncing the flickering state
-  path is the largest single improvement, and a Kalman filter is shown to be *algebraically the
-  same estimator* as the EMA unless a slope state is added. Every hyperparameter is stress-tested
-  against a walk-forward selector to price the hindsight in it. Deterministic — `RANDOM_SEED` pins
-  the EM restarts.
+- [`examples/accumulation_validation.ipynb`](examples/accumulation_validation.ipynb) —
+  validation of accumulation-style signals against subsequent returns.
 
 ## API surface
 
