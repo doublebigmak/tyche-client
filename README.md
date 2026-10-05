@@ -9,7 +9,7 @@ HTTPS using an API key, so it runs anywhere (no access to the backend repo neede
 
 ## 1. Get an API key
 
-Log into the Tyche web app and mint a key (Settings → API keys), or via the API:
+Log into the Tyche (zibaldon(dot)com) web app and mint a key (Settings → API keys), or via the API:
 
 ```bash
 # obtain a web session token first, then:
